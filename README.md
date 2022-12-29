@@ -1,2 +1,14 @@
 # vm-inspector
-Tool helping to analyse VM's behavior such as memory consumption、cpu usage and so on. 
+Tool helping to analyse the behaviors for a VM.
+  
+These behaviors include:  
+- The memory consumption for a running VM.  
+- The boot time for a VM. (planned)   
+- The cpu usage for a running VM. (planned)  
+  
+Following hypervisors are supported:  
+- Qemu
+- Cloud Hypervisor  
+  
+### Usage  
+//TODO
