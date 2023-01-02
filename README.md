@@ -11,4 +11,6 @@ Following hypervisors are supported:
 - Cloud Hypervisor  
   
 ### Usage  
-//TODO
+```
+vm-inspector mem -p <pid>
+```
