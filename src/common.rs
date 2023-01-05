@@ -4,7 +4,8 @@ use std::fmt::Display;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Error generated when inspecting the VM.   
+/// Error generated when inspecting the VM.
+#[derive(Debug)]   
 pub enum Error {
     ParseError(String),
     IoError(String)
