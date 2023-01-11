@@ -143,6 +143,10 @@ pub struct SmapsVma {
     private_clean: u64,
     /// Size of private dirty memory in KB.
     private_dirty: u64,
+    /// The physical memory mapped anonymously in KB.
+    anon: u64,
+    /// Size of hugetlb pages in KB.
+    hugetlb: u64,
     /// Size of resident physical memory in KB. (Can not be swapped out)
     locked: u64
 }
@@ -151,10 +155,12 @@ impl Display for SmapsVma {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:X} -> {:X} RSS: {:>10} KB {}",
+            "{:X} -> {:X}  {:>10} KB  {:>10} KB  {:>10} KB  {}",
             self.start,
             self.end,
             self.rss,
+            self.hugetlb,
+            self.anon,
             match &self.notion { Some(s) => &s, None => "" },
         )
     }
@@ -162,8 +168,8 @@ impl Display for SmapsVma {
 
 impl Ord for SmapsVma {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.rss != other.rss {
-            other.rss.cmp(&self.rss)
+        if (self.rss + self.hugetlb) != (other.rss + other.hugetlb) {
+            (other.rss + other.hugetlb).cmp(&(self.rss + &self.hugetlb))
         } else {
             if self.notion.is_some() {
                 Ordering::Less
@@ -218,6 +224,9 @@ impl SmapsVma {
                 "Private_Clean" => vma.private_clean = atoi!(u64, tokens[1]),
                 "Private_Dirty" => vma.private_dirty = atoi!(u64, tokens[1]),
                 "Locked" => vma.locked = atoi!(u64, tokens[1]),
+                "Anonymous" => vma.anon = atoi!(u64, tokens[1]),
+                "Shared_Hugetlb" => vma.hugetlb += atoi!(u64, tokens[1]),
+                "Private_Hugetlb" => vma.hugetlb += atoi!(u64, tokens[1]),
                 _ => ()
             };
         }
@@ -241,12 +250,18 @@ impl Display for ProcSmaps {
         write!(
             f, 
             "{}
-RSS (Shared Libs): {} KB
-{} VMAs with RSS usage > 0:
+VMA (Shared Libs) RSS: {} KB
+VMA (Others with RSS or Hugetlb pages > 0): 
+{:^12} -> {:^12}  {:^10}     {:^10}     {:^10}     {:^10}
 ", 
             draw_line('-', "Process VMAs", 30).unwrap(),
             self.libs_rss,
-            self.vmas.len()         
+            "Start Addr",
+            "End Addr",
+            "RSS",
+            "Hugetlb",
+            "Anonymous",
+            "Notion"
         )?;
         for vma in &self.vmas {
             writeln!(f, "{}", vma)?;
@@ -258,7 +273,7 @@ RSS (Shared Libs): {} KB
 impl ProcSmaps {
     /// Add a new SmapsVma, vma with rss == 0 will be ignored.
     fn add(&mut self, vma: SmapsVma) {
-        if vma.rss == 0 {
+        if (vma.rss + vma.hugetlb) == 0 {
             return;
         }
         if vma.notion.is_some() && vma.notion.as_ref().unwrap().starts_with("/usr/lib64") {
