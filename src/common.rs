@@ -1,14 +1,15 @@
 // Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+use clap::{Parser, Subcommand};
 use std::fmt::Display;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Error generated when inspecting the VM.
-#[derive(Debug)]   
+#[derive(Debug)]
 pub enum Error {
     ParseError(String),
-    IoError(String)
+    IoError(String),
 }
 
 impl Display for Error {
@@ -34,6 +35,34 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
+#[derive(Subcommand, Debug, Clone)]
+pub enum InspectCmd {
+    /// Show VM's memory consumption.
+    Mem {
+        /// PID of the target VM.
+        #[arg(short, long)]
+        pid: u32,
+        /// Whether to display the cmdline information.
+        #[arg(short, long, default_value_t = false)]
+        cmd: bool,
+        /// Whether to display the status information.
+        #[arg(short, long, default_value_t = false)]
+        status: bool,
+        /// Whether to display the VMAs information.
+        #[arg(short, long, default_value_t = false)]
+        vmas: bool,
+    },
+}
+
+/// Tool helping to analyse the behaviors for a VM.
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct InspectArgs {
+    /// Metric to inspect
+    #[command(subcommand)]
+    pub cmd: InspectCmd,
+}
+
 #[macro_export]
 macro_rules! percentage {
     ($value: expr, $base: expr) => {
@@ -43,6 +72,22 @@ macro_rules! percentage {
             ((($value as f64) / ($base as f64)) * 100.0) as u32
         }
     };
+}
+
+pub fn draw_line(dot: char, title: &str, width: usize) -> Option<String> {
+    if title.len() > width {
+        None
+    } else {
+        let num_of_dot = width - title.len();
+        Some(format!(
+            "{}{}{}",
+            &vec![dot; num_of_dot / 2].iter().collect::<String>(),
+            title,
+            &vec![dot; num_of_dot - (num_of_dot / 2)]
+                .iter()
+                .collect::<String>()
+        ))
+    }
 }
 
 pub trait Inspector {
