@@ -242,7 +242,7 @@ impl Display for ProcSmaps {
             f, 
             "{}
 RSS (Shared Libs): {} KB
-Display {} VMAs:
+{} VMAs with RSS usage > 0:
 ", 
             draw_line('-', "Process VMAs", 30).unwrap(),
             self.libs_rss,
