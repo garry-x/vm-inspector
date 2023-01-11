@@ -39,16 +39,16 @@ impl From<std::num::ParseIntError> for Error {
 pub enum InspectCmd {
     /// Show VM's memory consumption.
     Mem {
-        /// PID of the target VM.
+        /// PID of the hypervisor process.
         #[arg(short, long)]
         pid: u32,
-        /// Whether to display the cmdline information.
+        /// Show the command line arguments.
         #[arg(short, long, default_value_t = false)]
         cmd: bool,
-        /// Whether to display the status information.
+        /// Show the statistics of RSS usage.
         #[arg(short, long, default_value_t = false)]
         status: bool,
-        /// Whether to display the VMAs information.
+        /// Show the detailed RSS usage for each VMA. 
         #[arg(short, long, default_value_t = false)]
         vmas: bool,
     },
