@@ -89,12 +89,12 @@ impl Display for ProcStatus {
         write!(
             f,
             "{}
-Pid:            {}
-VmRSS:          {} KB
- -> RssAnon:    {} KB   ({}%)
- -> RssFile:    {} KB
- -> RssShmem:   {} KB
-HugetlbPages:   {} KB",
+Pid:             {:>10}
+RSS:             {:>10} KB
+ -> Anonymous:   {:>10} KB    ({}%)
+ -> File:        {:>10} KB
+ -> Shmem:       {:>10} KB
+Hugetlb Pages:   {:>10} KB",
             draw_line('-', "Process Status", 30).unwrap(),
             self.pid,
             self.vm_rss,
@@ -155,12 +155,12 @@ impl Display for SmapsVma {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:X} -> {:X}  {:>10} KB  {:>10} KB  {:>10} KB  {}",
+            "{:X}  {:X}  {:>10} KB  {:>10} KB  {:>10} KB  {}",
             self.start,
             self.end,
             self.rss,
-            self.hugetlb,
             self.anon,
+            self.hugetlb,
             match &self.notion { Some(s) => &s, None => "" },
         )
     }
@@ -239,8 +239,12 @@ impl SmapsVma {
 pub struct ProcSmaps {
     /// Vmas to be noticed.
     vmas: Vec<SmapsVma>,
-    /// Resident set size for shared libs.
+    /// Size of physical memory used for shared libs.
     libs_rss: u64,
+    libs_pss: u64,
+    /// Size of physical memeory used by vmas besides shared libs.
+    other_rss: u64,
+    other_anon: u64,
     /// Names for shared libs.
     libs: Vec<String>,
 }
@@ -250,18 +254,24 @@ impl Display for ProcSmaps {
         write!(
             f, 
             "{}
-VMA (Shared Libs) RSS: {} KB
-VMA (Others with RSS or Hugetlb pages > 0): 
-{:^12} -> {:^12}  {:^10}     {:^10}     {:^10}     {:^10}
+RSS (Shared Libs) : {:>10} KB
+PSS (Shared libs) : {:>10} KB
+RSS (Others)      : {:>10} KB
+Anonymous (Others): {:>10} KB
+
+VMAs with non-zero RSS/Hugetlb: 
+{:^12}  {:^12}  {:^10}     {:^10}     {:^10} 
 ", 
             draw_line('-', "Process VMAs", 30).unwrap(),
             self.libs_rss,
+            self.libs_pss,
+            self.other_rss,
+            self.other_anon,
             "Start Addr",
             "End Addr",
             "RSS",
-            "Hugetlb",
             "Anonymous",
-            "Notion"
+            "Hugetlb"
         )?;
         for vma in &self.vmas {
             writeln!(f, "{}", vma)?;
@@ -278,8 +288,11 @@ impl ProcSmaps {
         }
         if vma.notion.is_some() && vma.notion.as_ref().unwrap().starts_with("/usr/lib64") {
             self.libs_rss += vma.rss;
+            self.libs_pss += vma.pss;
             self.libs.push(vma.notion.unwrap().clone());
         } else {
+            self.other_rss += vma.rss;
+            self.other_anon += vma.anon;
             self.vmas.push(vma)
         }
     }
